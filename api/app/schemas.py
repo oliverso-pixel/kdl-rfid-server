@@ -3,17 +3,17 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 
-# 基礎籃子資料
+##
+## Basket
+##
 class BasketBase(BaseModel):
     rfid: str
     type: Optional[int] = None
     description: Optional[str] = None
 
-# 新增籃子請求 (Admin 用)
 class BasketCreate(BasketBase):
-    pass # 剛註冊時通常只有 RFID
+    pass
 
-# 更新籃子請求 (生產、收貨、出貨用)
 class BasketUpdate(BaseModel):
     status: str
     quantity: Optional[int] = None
@@ -25,9 +25,8 @@ class BasketUpdate(BaseModel):
     batch: Optional[str] = None
     
     productionDate: Optional[datetime] = None
-    updateBy: Optional[str] = None # 雖然會從 Token 抓，但保留彈性
+    updateBy: Optional[str] = None
 
-# 籃子歷史記錄 Response (結構與 BasketResponse 類似，但可能包含舊資料)
 class BasketHistoryResponse(BasketBase):
     bid: int
     status: str
@@ -45,7 +44,6 @@ class BasketHistoryResponse(BasketBase):
     class Config:
         from_attributes = True
 
-# 回傳給 App 的回應格式
 class BasketResponse(BasketBase):
     bid: int
     status: str
@@ -57,7 +55,7 @@ class BasketResponse(BasketBase):
     updateBy: Optional[str]
 
     class Config:
-        from_attributes = True # 讓 Pydantic 能讀取 SQLAlchemy 物件
+        from_attributes = True
 
 class BasketListResponse(BaseModel):
     total: int
@@ -65,7 +63,9 @@ class BasketListResponse(BaseModel):
     page_size: int
     items: List[BasketResponse]
 
-# 裝置註冊/更新 Request
+##
+## Device
+##
 class DeviceRegister(BaseModel):
     device_id: str
     name: Optional[str] = None
@@ -74,7 +74,6 @@ class DeviceRegister(BaseModel):
     app_version: Optional[str] = None
     ip_address: Optional[str] = None
 
-# 裝置心跳/狀態更新 Request
 class DeviceHeartbeat(BaseModel):
     device_id: str
     status: str = "ONLINE"
@@ -88,7 +87,9 @@ class DeviceResponse(DeviceRegister):
     class Config:
         from_attributes = True
 
-# User 回應模型 (新增 permissions)
+##
+## User 回應模型
+##
 class UserResponse(BaseModel):
     uid: int
     username: str
@@ -96,9 +97,29 @@ class UserResponse(BaseModel):
     role: str
     department: str | None
     permissions: List[str] = []
+    is_active: bool = True
+    last_login: Optional[datetime] = None
 
     class Config:
         from_attributes = True
+        
+class UserListResponse(BaseModel):
+    total: int
+    items: List[UserResponse]
+
+# 管理員更新用戶請求
+class UserUpdateAdmin(BaseModel):
+    name: Optional[str] = None
+    role: Optional[str] = None
+    department: Optional[str] = None
+    is_active: Optional[bool] = None
+    password: Optional[str] = None # 管理員重設密碼用
+    extra_permissions: Optional[List[str]] = None
+
+# 用戶修改自己密碼請求
+class UserPasswordUpdate(BaseModel):
+    current_password: str
+    new_password: str
 
 class UserCreate(BaseModel):
     username: str
@@ -106,9 +127,8 @@ class UserCreate(BaseModel):
     name: str
     role: str       # e.g., "Admin", "Operator"
     department: str # e.g., "IT", "Production", "Warehouse"
-    extra_permissions: Optional[List[str]] = [] # 額外權限列表
+    extra_permissions: Optional[List[str]] = []
 
-# 登入 Token 回傳模型 (新增 permissions)
 class Token(BaseModel):
     access_token: str
     token_type: str

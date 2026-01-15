@@ -16,14 +16,6 @@ r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
-# Token 回應模型
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-    role: str
-    username: str
-    department: str | None = None
-
 # 1. 登入 API
 @router.post("/login", response_model=Token)
 def login_for_access_token(

@@ -34,10 +34,6 @@ export default function Baskets() {
 
     const canEdit = permissions.includes('*') || permissions.includes('basket:update');
 
-    console.log(user);
-    console.log(permissions);
-    console.log(canEdit);
-
     const fetchBaskets = async () => {
         setLoading(true);
         try {

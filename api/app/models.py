@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime
+from sqlalchemy import Column, Integer, String, DateTime, Boolean
 from sqlalchemy.sql import func 
 from app.database import Base
 
@@ -12,21 +12,18 @@ class User(Base):
     department = Column(String)
     password_hash = Column(String)
     last_login = Column(DateTime, nullable=True)
-
     permissions = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
 
     def get_all_permissions(self):
         import json
         from app.core.permissions import DEFAULT_ROLE_PERMISSIONS
         
-        # 1. 取得角色預設權限
         role_perms = []
         if self.role in DEFAULT_ROLE_PERMISSIONS:
             dept_config = DEFAULT_ROLE_PERMISSIONS[self.role]
-            # 如果部門有特定設定，就用部門的，否則用通用設定(假設有的話)
             role_perms = dept_config.get(self.department, [])
             
-        # 2. 取得額外權限 (從 DB 解析)
         extra_perms = []
         if self.permissions:
             try:
@@ -34,7 +31,6 @@ class User(Base):
             except:
                 extra_perms = []
         
-        # 3. 合併並去重
         return set(role_perms + extra_perms)
 
 class Device(Base):
