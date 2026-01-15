@@ -32,9 +32,22 @@ def read_users(
     #     query = query.filter(User.department == current_user.department)
 
     total = query.count()
-    users = query.offset((page - 1) * page_size).limit(page_size).all()
+    users = query.order_by(User.uid).offset((page - 1) * page_size).limit(page_size).all()
+
+    items = []
+    for user in users:
+        items.append({
+            "uid": user.uid,
+            "username": user.username,
+            "name": user.name,
+            "role": user.role,
+            "department": user.department,
+            "is_active": user.is_active,
+            "last_login": user.last_login,
+            "permissions": list(user.get_all_permissions()) 
+        })
     
-    return {"total": total, "items": users}
+    return {"total": total, "items": items}
 
 @router.post("/", response_model=UserResponse)
 def create_user(
@@ -70,7 +83,16 @@ def create_user(
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    return new_user
+
+    return {
+        "uid": new_user.uid,
+        "username": new_user.username,
+        "name": new_user.name,
+        "role": new_user.role,
+        "department": new_user.department,
+        "is_active": new_user.is_active,
+        "permissions": list(new_user.get_all_permissions()) 
+    }
 
 @router.put("/{uid}", response_model=UserResponse)
 def update_user(
@@ -110,7 +132,15 @@ def update_user(
 
     db.commit()
     db.refresh(user)
-    return user
+    return {
+        "uid": user.uid,
+        "username": user.username,
+        "name": user.name,
+        "role": user.role,
+        "department": user.department,
+        "is_active": user.is_active,
+        "permissions": list(user.get_all_permissions())
+    }
 
 @router.delete("/{uid}")
 def delete_user(
