@@ -1,5 +1,5 @@
 # app/schemas.py
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import Optional, List
 from datetime import datetime
 
@@ -102,7 +102,7 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
-        
+
 class UserListResponse(BaseModel):
     total: int
     items: List[UserResponse]
@@ -136,3 +136,50 @@ class Token(BaseModel):
     username: str
     department: str | None = None
     permissions: List[str] = []
+
+##
+## Product 回應模型
+##
+class ProductBase(BaseModel):
+    itemcode: str
+    name: str
+    barcodeId: Optional[str] = None
+    qrcodeId: Optional[str] = None
+    div: Optional[int] = None
+    shelflife: Optional[int] = None
+    maxBasketCapacity: Optional[int] = 0
+    description: Optional[str] = None
+    imageUrl: Optional[str] = None
+    is_active: bool = True
+
+    @field_validator('div')
+    @classmethod
+    def check_div(cls, v: int) -> int:
+        if v is not None and v not in [10, 20]:
+            raise ValueError('Div must be 10 or 20')
+        return v
+
+class ProductCreate(ProductBase):
+    pass
+
+class ProductUpdate(BaseModel):
+    name: Optional[str] = None
+    itemcode: Optional[str] = None
+    barcodeId: Optional[str] = None
+    qrcodeId: Optional[str] = None
+    div: Optional[int] = None
+    shelflife: Optional[int] = None
+    maxBasketCapacity: Optional[int] = None
+    description: Optional[str] = None
+    imageUrl: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class ProductResponse(ProductBase):
+    pid: int
+
+    class Config:
+        from_attributes = True
+
+class ProductListResponse(BaseModel):
+    total: int
+    items: List[ProductResponse]

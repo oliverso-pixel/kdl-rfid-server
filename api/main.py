@@ -1,8 +1,10 @@
 import logging
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from app.v1.router import api_router
 import uvicorn
+import os
 
 app = FastAPI(
     title="RFID Inventory API", 
@@ -16,6 +18,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+os.makedirs("static/images", exist_ok=True)
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 app.include_router(api_router, prefix="/api/v1")
 

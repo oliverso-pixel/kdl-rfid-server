@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, DateTime, Boolean
+from sqlalchemy.dialects.mssql import NVARCHAR
 from sqlalchemy.sql import func 
 from app.database import Base
 
@@ -55,8 +56,8 @@ class Basket(Base):
     type = Column(Integer, nullable=True)
     
     # 這裡我們將 JSON 資料當作純文字存儲，App 端再自己解析
-    product = Column(String, nullable=True) # JSON String
-    batch = Column(String, nullable=True)   # JSON String
+    product = Column(NVARCHAR(4000), nullable=True) 
+    batch = Column(NVARCHAR(4000), nullable=True)
     
     warehouseId = Column(String, nullable=True)
     quantity = Column(Integer, default=0)
@@ -65,5 +66,20 @@ class Basket(Base):
     productionDate = Column(DateTime, nullable=True)
     lastUpdated = Column(DateTime, default=func.now(), onupdate=func.now())
     updateBy = Column(String, nullable=True)
-    description = Column(String, nullable=True)
+    description = Column(NVARCHAR(255), nullable=True)
+
+class Product(Base):
+    __tablename__ = "Products"
+
+    pid = Column(Integer, primary_key=True, index=True)
+    itemcode = Column(NVARCHAR(50), index=True) 
+    barcodeId = Column(String, nullable=True)
+    qrcodeId = Column(String, nullable=True)
+    name = Column(NVARCHAR(100))
+    div = Column(Integer, nullable=True)
+    shelflife = Column(Integer, nullable=True)
+    maxBasketCapacity = Column(Integer, default=0)
+    description = Column(NVARCHAR(255), nullable=True)
+    imageUrl = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
     
