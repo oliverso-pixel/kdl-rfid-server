@@ -22,6 +22,12 @@ class Perms(str, Enum):
     SHIPPING_OP = "op:shipping"
     RECEIVING_OP = "op:receiving"
 
+    PRODUCTION_READ = "production:read"
+    PRODUCTION_CREATE = "production:create"
+    PRODUCTION_STOP = "production:stop"           # 停止生產 (特殊權限)
+    PRODUCTION_EDIT_HISTORY = "production:edit_history"     # 修改過去日子的資料
+    PRODUCTION_DELETE_HISTORY = "production:delete_history" # 刪除過去日子的資料
+
 DEFAULT_ROLE_PERMISSIONS = {
     "Admin": {
         "IT": [Perms.SUPER_ADMIN],

@@ -83,3 +83,14 @@ class Product(Base):
     imageUrl = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
     
+class Batch(Base):
+    __tablename__ = "Batches"
+
+    bid = Column(Integer, primary_key=True, index=True)
+    batch_code = Column(String, index=True)
+    itemcode = Column(String, index=True)
+    totalQuantity = Column(Integer)
+    remainingQuantity = Column(Integer)
+    productionDate = Column(DateTime)
+    expireDate = Column(DateTime)
+    status = Column(String, default="PENDING")

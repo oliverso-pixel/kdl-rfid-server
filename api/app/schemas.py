@@ -1,7 +1,7 @@
 # app/schemas.py
 from pydantic import BaseModel, field_validator
 from typing import Optional, List
-from datetime import datetime
+from datetime import date, datetime
 
 ##
 ## Basket
@@ -183,3 +183,29 @@ class ProductResponse(ProductBase):
 class ProductListResponse(BaseModel):
     total: int
     items: List[ProductResponse]
+
+##
+## Batch
+##
+class BatchBase(BaseModel):
+    itemcode: str
+    totalQuantity: int
+    productionDate: date # 只需要日期
+
+class BatchCreate(BatchBase):
+    pass # 建立時只需這三個欄位
+
+class BatchUpdate(BaseModel):
+    totalQuantity: Optional[int] = None
+    remainingQuantity: Optional[int] = None
+    status: Optional[str] = None
+    
+class BatchResponse(BatchBase):
+    bid: int
+    batch_code: str
+    remainingQuantity: int
+    expireDate: datetime
+    status: str
+
+    class Config:
+        from_attributes = True
