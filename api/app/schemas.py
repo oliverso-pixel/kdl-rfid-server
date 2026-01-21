@@ -18,12 +18,18 @@ class BasketUpdate(BaseModel):
     status: str
     quantity: Optional[int] = None
     warehouseId: Optional[str] = None
-    
-    # 接收 JSON 字串或 Dict，這裡簡化為 Optional[str]
-    # Android 端可以傳送 JSON.stringify 後的字串，或者我們在 API 層轉
     product: Optional[str] = None 
     batch: Optional[str] = None
-    
+    productionDate: Optional[datetime] = None
+    updateBy: Optional[str] = None
+
+class BasketBatchUpdateItem(BaseModel):
+    rfid: str
+    status: Optional[str] = None
+    quantity: Optional[int] = None
+    warehouseId: Optional[str] = None
+    product: Optional[str] = None
+    batch: Optional[str] = None
     productionDate: Optional[datetime] = None
     updateBy: Optional[str] = None
 
@@ -63,9 +69,37 @@ class BasketListResponse(BaseModel):
     page_size: int
     items: List[BasketResponse]
 
-##
-## Device
-##
+# 共通資料 (Common Data)
+class BasketCommonData(BaseModel):
+    # status: Optional[str] = None
+    warehouseId: Optional[str] = None
+    product: Optional[str] = None
+    batch: Optional[str] = None
+    productionDate: Optional[datetime] = None
+    updateBy: Optional[str] = None
+    quantity: Optional[int] = None 
+
+# 個別籃子資料 (Specific Item)
+class BasketItemData(BaseModel):
+    rfid: str
+    quantity: Optional[int] = None
+    status: Optional[str] = None
+
+    warehouseId: Optional[str] = None
+    product: Optional[str] = None
+    batch: Optional[str] = None
+    productionDate: Optional[datetime] = None
+    updateBy: Optional[str] = None
+
+# 批量更新請求主體 (Request Body)
+class BasketBulkUpdateRequest(BaseModel):
+    updateType: Optional[str] = None
+    # updateType: str # 必填: Production, Receiving, Clear
+    commonData: Optional[BasketCommonData] = None
+    baskets: List[BasketItemData]
+
+# Device
+
 class DeviceRegister(BaseModel):
     device_id: str
     name: Optional[str] = None
@@ -83,6 +117,7 @@ class DeviceResponse(DeviceRegister):
     status: str
     last_active: Optional[datetime]
     registered_at: Optional[datetime]
+    currentUser: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -180,6 +215,17 @@ class ProductResponse(ProductBase):
     class Config:
         from_attributes = True
 
+class ProductAppResponse(BaseModel):
+    itemcode: str
+    barcodeId: Optional[str] = None
+    qrcodeId: Optional[str] = None
+    name: str
+    maxBasketCapacity: int
+    imageUrl: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
 class ProductListResponse(BaseModel):
     total: int
     items: List[ProductResponse]
@@ -206,6 +252,40 @@ class BatchResponse(BatchBase):
     remainingQuantity: int
     expireDate: datetime
     status: str
+
+    class Config:
+        from_attributes = True
+
+class BatchAppResponse(BaseModel):
+    batch_code: str
+    itemcode: str
+    totalQuantity: int
+    remainingQuantity: int
+    productionDate: datetime
+    expireDate: datetime
+    # status: str # 如果 App 需要顯示狀態 (如 PENDING/STOPPED)，建議加上這個
+    # bid: int    # 如果 App 需要對批次進行操作 (如回報進度)，建議加上這個
+
+    class Config:
+        from_attributes = True
+
+# --- Warehouse Schemas ---
+class WarehouseBase(BaseModel):
+    warehouseId: str
+    name: str
+    address: Optional[str] = None
+    isActive: bool = True
+
+class WarehouseCreate(WarehouseBase):
+    pass
+
+class WarehouseUpdate(BaseModel):
+    name: Optional[str] = None
+    address: Optional[str] = None
+    isActive: Optional[bool] = None
+
+class WarehouseResponse(WarehouseBase):
+    wid: int
 
     class Config:
         from_attributes = True

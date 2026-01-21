@@ -3,7 +3,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Batch, Product, User
-from app.schemas import BatchCreate, BatchUpdate, BatchResponse, ProductResponse
+from app.schemas import (
+    BatchCreate, BatchUpdate, BatchResponse, ProductResponse, 
+    ProductAppResponse, BatchAppResponse
+)
 from app.core.security import require_permission
 from app.core.permissions import Perms
 from app.v1.endpoints.auth import get_current_user
@@ -11,7 +14,7 @@ from datetime import datetime, timedelta, date
 
 router = APIRouter()
 
-# 1. 查詢某天的生產工序
+# 查詢某天的生產工序
 @router.get("/", response_model=list[BatchResponse])
 def read_batches(
     target_date: date = None,
@@ -33,7 +36,7 @@ def read_batches(
     
     return batches
 
-# 2. 新增生產批次
+# 新增生產批次
 @router.post("/", response_model=BatchResponse)
 def create_batch(
     batch_in: BatchCreate,
@@ -147,8 +150,10 @@ def delete_batch(
     db.commit()
     return {"message": "Batch deleted"}
 
-# APP
-@router.get("/daily-products", response_model=list[ProductResponse])
+"""
+App 端
+"""
+@router.get("/daily-products", response_model=list[ProductAppResponse])
 def get_daily_production_products(
     target_date: date = None,
     db: Session = Depends(get_db),
@@ -162,24 +167,40 @@ def get_daily_production_products(
     if not target_date:
         target_date = date.today()
     
-    # 1. 設定日期範圍 (全天)
     start = datetime.combine(target_date, datetime.min.time())
     end = datetime.combine(target_date, datetime.max.time())
     
-    # 2. 查詢當日批次中所有不重複的 itemcode
+    # 查詢當日批次中所有不重複的 itemcode
     # 使用 distinct() 優化查詢
     target_itemcodes = db.query(Batch.itemcode).filter(
         Batch.productionDate >= start,
         Batch.productionDate <= end
     ).distinct().all()
     
-    # target_itemcodes 會是 [('A001',), ('B002',)] 的 tuple 列表，需轉為純 list
     itemcode_list = [row[0] for row in target_itemcodes]
     
     if not itemcode_list:
         return []
 
-    # 3. 根據 itemcode 列表查詢產品詳細資料
     products = db.query(Product).filter(Product.itemcode.in_(itemcode_list)).all()
     
     return products
+
+@router.get("/app-list", response_model=list[BatchAppResponse])
+def read_batches_app(
+    target_date: date = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not target_date:
+        target_date = date.today()
+    
+    start = datetime.combine(target_date, datetime.min.time())
+    end = datetime.combine(target_date, datetime.max.time())
+    
+    batches = db.query(Batch).filter(
+        Batch.productionDate >= start,
+        Batch.productionDate <= end
+    ).all()
+    
+    return batches

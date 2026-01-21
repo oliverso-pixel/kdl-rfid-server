@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header, Request
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.database import get_db, settings
-from app.models import User
+from app.models import User, Device
 from app.schemas import Token, UserResponse
 from app.utils import verify_password, create_access_token
 from datetime import datetime
@@ -19,8 +19,10 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 # 1. 登入 API
 @router.post("/login", response_model=Token)
 def login_for_access_token(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(), 
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    x_device_id: str | None = Header(default=None)
 ):
     user = db.query(User).filter(User.username == form_data.username).first()
     
@@ -32,6 +34,15 @@ def login_for_access_token(
         )
 
     user.last_login = datetime.now()
+
+    if x_device_id:
+        device = db.query(Device).filter(Device.device_id == x_device_id).first()
+        if device:
+            device.currentUser = user.username
+            device.status = "ONLINE"
+            device.last_active = datetime.now()
+            device.ip_address = request.client.host
+
     db.commit()
 
     # 計算該使用者的最終權限 (Role 預設 + 額外權限)
@@ -101,7 +112,11 @@ def read_users_me(current_user: User = Depends(get_current_user)):
 
 # 3. 登出 API
 @router.post("/logout")
-def logout(token: str = Depends(oauth2_scheme)):
+def logout(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+    x_device_id: str | None = Header(default=None)
+):
     try:
         # 解析 Token 取得過期時間 (exp)
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
@@ -116,6 +131,12 @@ def logout(token: str = Depends(oauth2_scheme)):
             # TTL: 設定為 Token 剩餘時間，時間到自動從 Redis 消失 (節省空間)
             if ttl > 0:
                 r.setex(f"blacklist:{token}", ttl, "logged_out")
+
+        if x_device_id:
+            device = db.query(Device).filter(Device.device_id == x_device_id).first()
+            if device:
+                device.currentUser = None
+                db.commit()
                 
         return {"message": "Successfully logged out"}
         

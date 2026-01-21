@@ -56,23 +56,39 @@ wss.on('connection', (ws, req) => {
         updateDeviceStatus(deviceId, 'ONLINE');
     }
 
-    // 處理來自 Android 的訊息 (例如心跳包)
     ws.on('message', (message) => {
         const msgString = message.toString();
+        console.log(`📩 Received from client: ${msgString}`);
         
-        if (msgString === 'ping') {
-            // console.log(`💓 Ping received from ${ip}`);
-            ws.send('pong');
-            if (ws.deviceId) {
-                updateDeviceStatus(ws.deviceId, 'ONLINE');
+        try {
+            const data = JSON.parse(msgString);
+
+            if (data.type === 'heartbeat' && data.message === 'ping') {
+                
+                const devId = data.deviceId || ws.deviceId || 'Unknown';
+                console.log(`💓 Heartbeat from ${devId} at ${new Date().toLocaleTimeString()}`);
+
+                ws.send(JSON.stringify({ type: 'pong' }));
+
+                if (devId && devId !== 'Unknown') {
+                    updateDeviceStatus(devId, 'ONLINE');
+                }
+                return;
             }
-        } else {
-            console.log(`📩 Received from client: ${msgString}`);
+        } catch (e) {
+            // if (msgString === 'ping') {
+            //     console.log(`💓 Ping (raw) from ${ws.deviceId}`);
+            //     ws.send(JSON.stringify({ type: 'pong' }));
+            //     if (ws.deviceId) updateDeviceStatus(ws.deviceId, 'ONLINE');
+            //     return;
+            // }
+            console.log(`📩 Received from client: ${e}`);
         }
     });
 
     ws.on('close', () => {
         console.log(`🔌 Client disconnected: ${ws.deviceId || ip}`);
+        updateDeviceStatus(ws.deviceId, 'OFFLINE');
     });
 
     ws.on('error', (error) => {
@@ -96,7 +112,7 @@ async function updateDeviceStatus(deviceId, status) {
             device_id: deviceId,
             status: status
         });
-        // console.log(`Updated ${deviceId} to ${status}`); // 除錯用，訊息太多可註解掉
+        console.log(`Updated ${deviceId} to ${status}`); // 除錯用，訊息太多可註解掉
     } catch (error) {
         console.error(`❌ Failed to update device status: ${error.message}`);
     }

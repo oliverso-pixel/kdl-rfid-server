@@ -47,6 +47,7 @@ class Device(Base):
     ip_address = Column(String, nullable=True)
     last_active = Column(DateTime, default=func.now())
     registered_at = Column(DateTime, default=func.now())
+    currentUser = Column(String, nullable=True)
 
 class Basket(Base):
     __tablename__ = "Baskets"
@@ -94,3 +95,12 @@ class Batch(Base):
     productionDate = Column(DateTime)
     expireDate = Column(DateTime)
     status = Column(String, default="PENDING")
+
+class Warehouse(Base):
+    __tablename__ = "Warehouses"
+
+    wid = Column(Integer, primary_key=True, index=True)
+    warehouseId = Column(String(50), unique=True, index=True, nullable=False)
+    name = Column(NVARCHAR(100))
+    address = Column(NVARCHAR(255), nullable=True)
+    isActive = Column(Boolean, default=True)

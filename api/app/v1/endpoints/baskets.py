@@ -5,7 +5,10 @@ from sqlalchemy import or_, and_, text
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import Basket, User
-from app.schemas import BasketCreate, BasketUpdate, BasketResponse, BasketListResponse
+from app.schemas import (
+    BasketCreate, BasketUpdate, BasketResponse, BasketListResponse,
+    BasketBatchUpdateItem, BasketBulkUpdateRequest, BasketCommonData
+)
 from app.v1.endpoints.auth import get_current_user
 import redis
 import json
@@ -18,8 +21,8 @@ router = APIRouter()
 r = redis.Redis(host='localhost', port=6379, db=0)
 
 # 新增籃子 (僅限 Admin)
-@router.post("/", response_model=BasketResponse)
-def create_basket(
+@router.post("/", response_model=dict)
+def create_basket( 
     basket: BasketCreate, 
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission(Perms.BASKET_CREATE))
@@ -47,9 +50,12 @@ def create_basket(
     
     db.add(new_basket)
     db.commit()
-    db.refresh(new_basket)
-    return new_basket
-pass
+    # db.refresh(new_basket)
+    # return new_basket
+    return {
+        "rfid": basket.rfid,
+        "detail": "success"
+    }
 
 # 查詢籃子詳情
 @router.get("/{rfid}", response_model=BasketResponse)
@@ -142,7 +148,90 @@ def get_basket_history(
         raise HTTPException(status_code=500, detail="Failed to fetch history")
 
 # 更新籃子 (生產、入庫、出貨) -> 觸發 Redis 推播
-@router.put("/{rfid}", response_model=BasketResponse)
+@router.put("/bulk-update", response_model=dict)
+def bulk_update_baskets(
+    request: BasketBulkUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    common = request.commonData or BasketCommonData()
+    updated_count = 0
+    default_update_by = common.updateBy or current_user.username
+
+    default_status = None
+    is_clear_mode = False
+
+    if request.updateType == "Production":
+        default_status = "IN_PRODUCTION"
+    elif request.updateType == "Receiving":
+        default_status = "IN_STOCK"
+    elif request.updateType == "Transfer":
+        default_status = "IN_STOCK"
+    elif request.updateType == "Clear":
+        default_status = "UNASSIGNED"
+        is_clear_mode = True
+
+    for item in request.baskets:
+        basket = db.query(Basket).filter(Basket.rfid == item.rfid).first()
+        if not basket:
+            continue
+
+        # 2. Update By (個別 > 共通 > Token)
+        basket.updateBy = item.updateBy or default_update_by
+        basket.lastUpdated = datetime.now()
+
+        if is_clear_mode:
+            basket.status = "UNASSIGNED"
+            basket.quantity = 0
+            basket.product = None
+            basket.batch = None
+            basket.productionDate = None
+            basket.warehouseId = None 
+            # if item.warehouseId or common.warehouseId:
+            #     basket.warehouseId = item.warehouseId or common.warehouseId
+        
+        else:
+            # 4. 正常更新模式 (Production / Receiving / Other)
+            
+            # Status: 個別指定 > 預設 (由 Type 決定)
+            # 如果個別沒指定且 Type 也沒定義，則保持原狀
+            new_status = item.status or default_status
+            if new_status:
+                basket.status = new_status
+
+            # Quantity
+            new_qty = item.quantity if item.quantity is not None else common.quantity
+            if new_qty is not None:
+                basket.quantity = new_qty
+
+            # Warehouse
+            new_wh = item.warehouseId or common.warehouseId
+            if new_wh:
+                basket.warehouseId = new_wh
+
+            # Product Info
+            new_prod = item.product or common.product
+            if new_prod: basket.product = new_prod
+            
+            new_batch = item.batch or common.batch
+            if new_batch: basket.batch = new_batch
+            
+            new_pdate = item.productionDate or common.productionDate
+            if new_pdate: basket.productionDate = new_pdate
+
+        # 推播 Redis 通知
+        publish_redis_update(basket)
+        updated_count += 1
+
+    db.commit()
+    
+    return {
+        "message": "success", 
+        "updated_count": updated_count,
+        "update_type": request.updateType
+    }
+
+@router.put("/{rfid}", response_model=dict)
 def update_basket(
     rfid: str, 
     basket_update: BasketUpdate, 
@@ -153,7 +242,6 @@ def update_basket(
     if not basket:
         raise HTTPException(status_code=404, detail="Basket not found")
 
-    # 更新欄位 (只更新有傳來的值)
     if basket_update.status is not None:
         basket.status = basket_update.status
     if basket_update.quantity is not None:
@@ -167,29 +255,32 @@ def update_basket(
     if basket_update.productionDate is not None:
         basket.productionDate = basket_update.productionDate
 
-    # 自動記錄更新者與時間
-    basket.updateBy = current_user.username
+    basket.updateBy = basket_update.updateBy or current_user.username
     basket.lastUpdated = datetime.now()
 
     db.commit()
-    db.refresh(basket)
 
-    # --- Redis 推播邏輯 ---
-    # 格式需與 Android App (WebSocketManager) 預期的一致
+    publish_redis_update(basket)
+
+    # return basket
+    return {
+        "rfid": basket.rfid,
+        "detail": "success"
+    }
+
+# 輔助函式：Redis 推播 (避免代碼重複)
+def publish_redis_update(basket):
     message = {
         "event": "BASKET_UPDATED",
         "data": {
-            "uid": basket.rfid,  # App 使用 uid
+            "uid": basket.rfid,
             "status": basket.status,
             "quantity": basket.quantity,
             "warehouseId": basket.warehouseId,
             "timestamp": int(basket.lastUpdated.timestamp() * 1000)
         }
     }
-    # 發佈到 'rfid_updates' 頻道 (Node.js 會監聽此頻道)
     try:
         r.publish('rfid_updates', json.dumps(message))
     except Exception as e:
         print(f"Redis publish failed: {e}")
-
-    return basket
