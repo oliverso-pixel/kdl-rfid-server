@@ -79,7 +79,9 @@ class Product(Base):
     name = Column(NVARCHAR(100))
     div = Column(Integer, nullable=True)
     shelflife = Column(Integer, nullable=True)
+    btype = Column(Integer, default=1)
     maxBasketCapacity = Column(Integer, default=0)
+    maxTrolleyCapacity = Column(Integer, default=0)
     description = Column(NVARCHAR(255), nullable=True)
     imageUrl = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
@@ -90,11 +92,16 @@ class Batch(Base):
     bid = Column(Integer, primary_key=True, index=True)
     batch_code = Column(String, index=True)
     itemcode = Column(String, index=True)
-    totalQuantity = Column(Integer)
-    remainingQuantity = Column(Integer)
+
+    totalQuantity = Column(Integer)          # 參考用 (SAP 預計總量)
+    targetQuantity = Column(Integer, default=0) # 用戶目標 (可修改)
+    producedQuantity = Column(Integer, default=0) # 實際生產總量 (累加)
+    remainingQuantity = Column(Integer, default=0) # 實際在庫數量 (Stock)
+
     productionDate = Column(DateTime)
     expireDate = Column(DateTime)
     status = Column(String, default="PENDING")
+    maxRepairs = Column(Integer, default=1)
 
 class Warehouse(Base):
     __tablename__ = "Warehouses"

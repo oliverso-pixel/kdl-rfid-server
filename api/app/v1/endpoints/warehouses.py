@@ -1,9 +1,13 @@
 # api/app/v1/endpoints/warehouses.py
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from datetime import date, datetime, timedelta
 from app.database import get_db
-from app.models import Warehouse, Basket, User
-from app.schemas import WarehouseCreate, WarehouseUpdate, WarehouseResponse, BasketResponse
+from app.models import Warehouse, Basket, User, Product, Batch
+from app.schemas import (
+    WarehouseCreate, WarehouseUpdate, WarehouseResponse, 
+    BasketResponse, BatchResponse
+)
 from app.core.security import require_permission
 from app.core.permissions import Perms
 from typing import List, Optional
@@ -76,7 +80,48 @@ def get_warehouse_inventory(
     # 如果您希望顯示所有在此位置的籃子(不論狀態)，可移除 status 過濾
     baskets = db.query(Basket).filter(
         Basket.warehouseId == warehouseId,
-        Basket.status == "WAREHOUSE" 
+        # Basket.status == "WAREHOUSE" 
     ).all()
     
     return baskets
+
+# 依據過期日反查批次資訊
+@router.get("/trace-batch", response_model=List[BatchResponse])
+def trace_batch_by_expiry(
+    itemcode: str,
+    expire_date: date,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission(Perms.USER_READ))
+):
+    """
+    提供 ItemCode 與 ExpireDate，反推生產日期並回傳當天的批次列表。
+    邏輯：ProductionDate = ExpireDate - Product.ShelfLife
+    """
+    
+    # 1. 取得產品資訊以獲取保存期限
+    product = db.query(Product).filter(Product.itemcode == itemcode).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    
+    # 2. 計算生產日期
+    # 注意：shelflife 若為 None 則視為 0
+    shelf_life_days = product.shelflife or 0
+    calculated_prod_date = expire_date - timedelta(days=shelf_life_days)
+    
+    # 3. 設定查詢範圍 (該日期的 00:00:00 到 23:59:59)
+    start_dt = datetime.combine(calculated_prod_date, datetime.min.time())
+    end_dt = datetime.combine(calculated_prod_date, datetime.max.time())
+    
+    # 4. 查詢符合該生產日期的批次
+    batches = db.query(Batch).filter(
+        Batch.itemcode == itemcode,
+        Batch.productionDate >= start_dt,
+        Batch.productionDate <= end_dt
+    ).all()
+    
+    # Optional: 即使生產日期沒對上，只要 expireDate 對上也算，可以改用：
+    # start_exp = datetime.combine(expire_date, datetime.min.time())
+    # end_exp = datetime.combine(expire_date, datetime.max.time())
+    # batches = db.query(Batch).filter(Batch.itemcode==itemcode, Batch.expireDate >= start_exp, Batch.expireDate <= end_exp).all()
+    
+    return batches

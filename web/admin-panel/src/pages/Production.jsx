@@ -14,10 +14,10 @@ export default function Production() {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [showCopyModal, setShowCopyModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
-    const [editForm, setEditForm] = useState({ bid: null, status: '', totalQuantity: 0, remainingQuantity: 0 });
+    const [editForm, setEditForm] = useState({ bid: null, status: '', targetQuantity: 0, producedQuantity: 0 });
     
     // 表單資料
-    const [createForm, setCreateForm] = useState({ itemcode: '', totalQuantity: 100, productSearch: '' });
+    const [createForm, setCreateForm] = useState({ itemcode: '', targetQuantity: 100, productSearch: '' });
     const [copySourceDate, setCopySourceDate] = useState(''); // 複製來源日期
     const [statusForm, setStatusForm] = useState({ bid: null, status: '' }); // 狀態修改用
 
@@ -111,7 +111,7 @@ export default function Production() {
         try {
             await api.post('/production/', {
                 itemcode: createForm.itemcode,
-                totalQuantity: parseInt(createForm.totalQuantity),
+                targetQuantity: parseInt(createForm.targetQuantity),
                 productionDate: selectedDate
             });
             setShowCreateModal(false);
@@ -146,7 +146,7 @@ export default function Production() {
             const promises = sourceBatches.map(batch => 
                 api.post('/production/', {
                     itemcode: batch.itemcode,
-                    totalQuantity: batch.totalQuantity, // 複製原本的預計產量
+                    targetQuantity: batch.targetQuantity, // 複製原本的預計產量
                     productionDate: selectedDate
                 })
             );
@@ -179,8 +179,8 @@ export default function Production() {
         setEditForm({
             bid: batch.bid,
             status: batch.status,
-            totalQuantity: batch.totalQuantity,
-            remainingQuantity: batch.remainingQuantity
+            targetQuantity: batch.targetQuantity,
+            producedQuantity: batch.producedQuantity
         });
         setShowEditModal(true);
     };
@@ -189,8 +189,8 @@ export default function Production() {
         try {
             await api.put(`/production/${editForm.bid}`, {
                 status: editForm.status,
-                totalQuantity: parseInt(editForm.totalQuantity),
-                remainingQuantity: parseInt(editForm.remainingQuantity)
+                targetQuantity: parseInt(editForm.targetQuantity),
+                producedQuantity: parseInt(editForm.producedQuantity)
             });
             setShowEditModal(false);
             fetchBatches();
@@ -240,7 +240,7 @@ export default function Production() {
                             </button>
                             <button 
                                 onClick={() => { 
-                                    setCreateForm({ itemcode: '', totalQuantity: 100, productSearch: '' }); 
+                                    setCreateForm({ itemcode: '', targetQuantity: 100, productSearch: '' }); 
                                     setFilteredProducts([]);
                                     setShowCreateModal(true); 
                                 }}
@@ -271,8 +271,8 @@ export default function Production() {
                                 <span className="ml-2 text-sm text-slate-400 font-normal">({batch.itemcode})</span>
                             </h3>
                             <div className="text-sm text-slate-500 mt-1 flex gap-4">
-                                <span>預計: <strong>{batch.totalQuantity}</strong></span>
-                                <span>剩餘: <strong>{batch.remainingQuantity}</strong></span>
+                                <span>預計: <strong>{batch.targetQuantity}</strong></span>
+                                <span>生產: <strong>{batch.producedQuantity}</strong></span>
                             </div>
                         </div>
 
@@ -354,8 +354,8 @@ export default function Production() {
                                 <input 
                                     type="number" 
                                     className="w-full border rounded p-2 focus:border-blue-500 outline-none"
-                                    value={createForm.totalQuantity}
-                                    onChange={e => setCreateForm({...createForm, totalQuantity: e.target.value})}
+                                    value={createForm.targetQuantity}
+                                    onChange={e => setCreateForm({...createForm, targetQuantity: e.target.value})}
                                     required
                                     min="1"
                                 />
@@ -431,8 +431,8 @@ export default function Production() {
                                     <input 
                                         type="number" 
                                         className="w-full border rounded p-2"
-                                        value={editForm.totalQuantity}
-                                        onChange={e => setEditForm({...editForm, totalQuantity: e.target.value})}
+                                        value={editForm.targetQuantity}
+                                        onChange={e => setEditForm({...editForm, targetQuantity: e.target.value})}
                                     />
                                 </div>
                                 <div>
@@ -440,8 +440,8 @@ export default function Production() {
                                     <input 
                                         type="number" 
                                         className="w-full border rounded p-2"
-                                        value={editForm.remainingQuantity}
-                                        onChange={e => setEditForm({...editForm, remainingQuantity: e.target.value})}
+                                        value={editForm.producedQuantity}
+                                        onChange={e => setEditForm({...editForm, producedQuantity: e.target.value})}
                                     />
                                 </div>
                             </div>

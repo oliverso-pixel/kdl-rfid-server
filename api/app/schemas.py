@@ -3,9 +3,9 @@ from pydantic import BaseModel, field_validator
 from typing import Optional, List
 from datetime import date, datetime
 
-##
-## Basket
-##
+"""
+# --- Basket ---
+"""
 class BasketBase(BaseModel):
     rfid: str
     type: Optional[int] = None
@@ -98,8 +98,25 @@ class BasketBulkUpdateRequest(BaseModel):
     commonData: Optional[BasketCommonData] = None
     baskets: List[BasketItemData]
 
-# Device
+class BasketBulkItem(BaseModel):
+    rfid: str
+    type: Optional[int] = None
+    description: Optional[str] = None
 
+class BasketBulkCreateRequest(BaseModel):
+    items: List[BasketBulkItem]
+
+class BasketBulkCreateResult(BaseModel):
+    rfid: str
+    success: bool
+    message: str
+
+class BasketBulkCreateResponse(BaseModel):
+    results: List[BasketBulkCreateResult]
+
+"""
+# --- Device ---
+"""
 class DeviceRegister(BaseModel):
     device_id: str
     name: Optional[str] = None
@@ -122,9 +139,9 @@ class DeviceResponse(DeviceRegister):
     class Config:
         from_attributes = True
 
-##
+"""
 ## User 回應模型
-##
+"""
 class UserResponse(BaseModel):
     uid: int
     username: str
@@ -172,9 +189,9 @@ class Token(BaseModel):
     department: str | None = None
     permissions: List[str] = []
 
-##
-## Product 回應模型
-##
+"""
+# --- Product ---
+"""
 class ProductBase(BaseModel):
     itemcode: str
     name: str
@@ -182,7 +199,9 @@ class ProductBase(BaseModel):
     qrcodeId: Optional[str] = None
     div: Optional[int] = None
     shelflife: Optional[int] = None
+    btype: Optional[int] = None
     maxBasketCapacity: Optional[int] = 0
+    maxTrolleyCapacity: Optional[int] = 0
     description: Optional[str] = None
     imageUrl: Optional[str] = None
     is_active: bool = True
@@ -204,7 +223,9 @@ class ProductUpdate(BaseModel):
     qrcodeId: Optional[str] = None
     div: Optional[int] = None
     shelflife: Optional[int] = None
+    btype: Optional[int] = None
     maxBasketCapacity: Optional[int] = None
+    maxTrolleyCapacity: Optional[int] = None
     description: Optional[str] = None
     imageUrl: Optional[str] = None
     is_active: Optional[bool] = None
@@ -220,6 +241,7 @@ class ProductAppResponse(BaseModel):
     barcodeId: Optional[str] = None
     qrcodeId: Optional[str] = None
     name: str
+    btype: Optional[int] = None
     maxBasketCapacity: int
     imageUrl: Optional[str] = None
 
@@ -230,21 +252,24 @@ class ProductListResponse(BaseModel):
     total: int
     items: List[ProductResponse]
 
-##
-## Batch
-##
+"""
+# --- Batch ---
+"""
 class BatchBase(BaseModel):
     itemcode: str
     totalQuantity: int
-    productionDate: date # 只需要日期
+    targetQuantity: Optional[int] = 0
+    producedQuantity: Optional[int] = 0
+    productionDate: date
 
 class BatchCreate(BatchBase):
-    pass # 建立時只需這三個欄位
-
+    # maxRepairs: Optional[int] = 1 # 建立時通常使用預設值，若需手動指定可在此加入 
+    pass
+    
 class BatchUpdate(BaseModel):
-    totalQuantity: Optional[int] = None
-    remainingQuantity: Optional[int] = None
+    targetQuantity: Optional[int] = None
     status: Optional[str] = None
+    # totalQuantity 通常不讓改，producedQuantity 由系統計算
     
 class BatchResponse(BatchBase):
     bid: int
@@ -252,24 +277,30 @@ class BatchResponse(BatchBase):
     remainingQuantity: int
     expireDate: datetime
     status: str
+    maxRepairs: int
 
     class Config:
         from_attributes = True
 
 class BatchAppResponse(BaseModel):
+    # bid: int    # 如果 App 需要對批次進行操作 (如回報進度)，建議加上這個
     batch_code: str
     itemcode: str
     totalQuantity: int
+    targetQuantity: int
+    producedQuantity: int
     remainingQuantity: int
     productionDate: datetime
     expireDate: datetime
-    # status: str # 如果 App 需要顯示狀態 (如 PENDING/STOPPED)，建議加上這個
-    # bid: int    # 如果 App 需要對批次進行操作 (如回報進度)，建議加上這個
+    status: str
+    maxRepairs: int
 
     class Config:
         from_attributes = True
 
-# --- Warehouse Schemas ---
+"""
+# --- Warehouse ---
+"""
 class WarehouseBase(BaseModel):
     warehouseId: str
     name: str

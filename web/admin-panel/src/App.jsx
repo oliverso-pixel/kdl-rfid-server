@@ -24,7 +24,7 @@ function PrivateRoute({ children }) {
 const NAV_ITEMS = [
     { name: '儀表板', path: '/', icon: <LayoutDashboard size={20} /> },
     { name: '生產管理', path: '/production', icon: <Factory size={20} /> },
-    { name: '庫存監控', path: '/inventory', icon: <Package size={20} /> }, // 對應原 Baskets
+    { name: '籃子監控', path: '/inventory', icon: <Package size={20} /> },
     { name: '倉庫管理', path: '/warehouses', icon: <Warehouse size={20} /> },
     { name: '出貨管理', path: '/shipping', icon: <Truck size={20} /> },
     { name: '車隊管理', path: '/fleet', icon: <Car size={20} /> },

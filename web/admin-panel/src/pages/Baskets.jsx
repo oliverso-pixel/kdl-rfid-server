@@ -41,8 +41,8 @@ export default function Baskets() {
                 page,
                 page_size: pageSize,
                 search: search || undefined,
-                start_date: startDate || undefined,
-                end_date: endDate || undefined,
+                start_date: startDate ? `${startDate} 00:00:00` : undefined,
+                end_date: endDate ? `${endDate} 23:59:59` : undefined,
                 status: statusFilter === "ALL" ? undefined : statusFilter
             };
 
@@ -205,6 +205,7 @@ export default function Baskets() {
                                         <th className="p-3 font-medium">數量</th>
                                         <th className="p-3 font-medium">位置</th>
                                         <th className="p-3 font-medium">最後更新</th>
+                                        <th className="p-3 font-medium">操作員</th>
                                     </tr>
                                 </thead>
                                 <tbody className="text-sm divide-y divide-slate-100">
@@ -232,6 +233,7 @@ export default function Baskets() {
                                                 <td className="p-3 text-slate-500">
                                                     {new Date(basket.lastUpdated).toLocaleString()}
                                                 </td>
+                                                <td className="p-3">{basket.updateBy || '-'}</td>
                                             </tr>
                                         ))
                                     )}

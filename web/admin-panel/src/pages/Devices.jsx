@@ -28,7 +28,7 @@ export default function Devices() {
                 <Smartphone className="mr-2" /> 裝置管理
             </h1>
             
-            {/* ✅ 修改這裡：確保 gap 足夠，並且在不同螢幕尺寸正確換行 */}
+            {/* 修改這裡：確保 gap 足夠，並且在不同螢幕尺寸正確換行 */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {devices.map((device) => (
                     <div key={device.did} className={`border p-4 rounded-lg shadow-sm flex flex-col justify-between h-full ${device.status === 'ONLINE' ? 'bg-green-50 border-green-200' : 'bg-gray-50'}`}>

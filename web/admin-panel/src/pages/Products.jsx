@@ -76,7 +76,7 @@ export default function Products() {
         setFormData({ 
             itemcode: '', name: '', barcodeId: '', qrcodeId: '',
             div: 10,
-            maxBasketCapacity: 50, shelflife: 365, is_active: true, imageUrl: ''
+            maxBasketCapacity: 60, maxTrolleyCapacity: 0, shelflife: 365, btype: 1, is_active: true, imageUrl: ''
         });
         setIsEditing(false);
         setShowModal(true);
@@ -154,6 +154,8 @@ export default function Products() {
                             
                             <div className="grid grid-cols-2 gap-y-2 text-xs text-slate-600">
                                 <div>籃子容量: {prod.maxBasketCapacity}</div>
+                                <div>籃子類型: {prod.btype}</div>
+                                <div>台車容量: {prod.maxTrolleyCapacity}</div>
                                 <div>保存期限: {prod.shelflife}天</div>
                                 <div className="col-span-2 truncate">Barcode: {prod.barcodeId || '-'}</div>
                             </div>
@@ -219,9 +221,25 @@ export default function Products() {
                                     </select>
                                 </div>
                                 <div>
+                                    <label className="block text-sm font-bold mb-1">籃子類型 (Basket Type)</label>
+                                    <select 
+                                        className="w-full border rounded p-2 bg-white" 
+                                        value={formData.btype} 
+                                        onChange={e => setFormData({...formData, btype: parseInt(e.target.value)})}
+                                    >
+                                        <option value={1}>樽格</option>
+                                        <option value={2}>花格</option>
+                                    </select>
+                                </div>
+                                <div>
                                     <label className="block text-sm font-bold mb-1">最大籃子容量</label>
                                     <input type="number" className="w-full border rounded p-2" 
                                         value={formData.maxBasketCapacity} onChange={e => setFormData({...formData, maxBasketCapacity: parseInt(e.target.value)})} />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold mb-1">最大台車容量</label>
+                                    <input type="number" className="w-full border rounded p-2" 
+                                        value={formData.maxTrolleyCapacity} onChange={e => setFormData({...formData, maxTrolleyCapacity: parseInt(e.target.value)})} />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-bold mb-1">保存期限 (天)</label>

@@ -43,18 +43,18 @@ def create_batch(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission(Perms.PRODUCTION_CREATE))
 ):
-    # A. 檢查產品是否存在並取得 shelflife
     product = db.query(Product).filter(Product.itemcode == batch_in.itemcode).first()
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     
-    # B. 計算過期日 (生產日 + shelflife)
     prod_dt = datetime.combine(batch_in.productionDate, datetime.min.time())
     expire_dt = prod_dt + timedelta(days=product.shelflife or 0)
     
-    # C. 生成 Batch Code (BC-YYYYMMDD-ITEMCODE)
+    """
+    # 生成 Batch Code (BC-YYYYMMDD-ITEMCODE)
     # 為了避免同一天同一產品重複，可以加上隨機碼或序列，這裡簡單用 ITEMCODE
     # 若需同一天產多次同一產品，建議加上時間戳或計數器
+    """
     count = db.query(Batch).filter(
         Batch.productionDate >= prod_dt,
         Batch.productionDate < prod_dt + timedelta(days=1),
@@ -63,11 +63,15 @@ def create_batch(
     suffix = f"{count + 1:02d}"
     batch_code = f"BC-{batch_in.productionDate.strftime('%Y%m%d')}-{batch_in.itemcode}-{suffix}"
 
+    target_qty = batch_in.targetQuantity if batch_in.targetQuantity and batch_in.targetQuantity > 0 else batch_in.totalQuantity
+
     new_batch = Batch(
         batch_code=batch_code,
         itemcode=batch_in.itemcode,
         totalQuantity=batch_in.totalQuantity,
-        remainingQuantity=batch_in.totalQuantity, # 初始剩餘 = 總量
+        targetQuantity=target_qty,
+        producedQuantity=0,
+        remainingQuantity=0,
         productionDate=prod_dt,
         expireDate=expire_dt,
         status="PENDING"
@@ -78,7 +82,7 @@ def create_batch(
     db.refresh(new_batch)
     return new_batch
 
-# 3. 修改批次 (需檢查日期權限)
+# 修改批次 (需檢查日期權限)
 @router.put("/{bid}", response_model=BatchResponse)
 def update_batch(
     bid: int,
@@ -90,7 +94,6 @@ def update_batch(
     if not batch:
         raise HTTPException(status_code=404, detail="Batch not found")
     
-    # 1. 權限與歷史資料檢查
     today = date.today()
     batch_date = batch.productionDate.date()
     perms = current_user.get_all_permissions()
@@ -103,22 +106,24 @@ def update_batch(
         if Perms.SUPER_ADMIN not in perms and Perms.PRODUCTION_STOP not in perms:
             raise HTTPException(status_code=403, detail="Permission denied: Cannot stop production")
 
-    # 2. 更新數量邏輯
     if batch_update.totalQuantity is not None:
-        # 計算總量變化差額
-        diff = batch_update.totalQuantity - batch.totalQuantity
-        batch.totalQuantity = batch_update.totalQuantity
+        # diff = batch_update.totalQuantity - batch.totalQuantity
+        # batch.totalQuantity = batch_update.totalQuantity
         
-        # 如果這次請求「沒有」指定新的剩餘量，則自動依差額調整
-        # 例如：原總量100/剩餘50 (已產50)。新總量200 (+100) -> 剩餘應變為 150
-        if batch_update.remainingQuantity is None:
-            batch.remainingQuantity += diff
+        # if batch_update.remainingQuantity is None:
+        #     batch.remainingQuantity += diff
+
+        batch.targetQuantity = batch_update.targetQuantity
+
+        if batch.producedQuantity >= batch.targetQuantity and batch.status == "IN_PRODUCTION":
+            batch.status = "COMPLETED"
+        elif batch.producedQuantity < batch.targetQuantity and batch.status == "COMPLETED":
+            batch.status = "IN_PRODUCTION"
 
     # 如果有明確指定剩餘量，則直接覆蓋 (優先權高於自動計算)
-    if batch_update.remainingQuantity is not None:
-        batch.remainingQuantity = batch_update.remainingQuantity
+    # if batch_update.remainingQuantity is not None:
+    #     batch.remainingQuantity = batch_update.remainingQuantity
 
-    # 3. 更新狀態
     if batch_update.status is not None:
         batch.status = batch_update.status
 
@@ -126,7 +131,7 @@ def update_batch(
     db.refresh(batch)
     return batch
 
-# 4. 刪除批次 (需檢查日期權限)
+# 刪除批次 (需檢查日期權限)
 @router.delete("/{bid}")
 def delete_batch(
     bid: int,
