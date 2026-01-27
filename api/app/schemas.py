@@ -257,8 +257,8 @@ class ProductListResponse(BaseModel):
 """
 class BatchBase(BaseModel):
     itemcode: str
-    totalQuantity: int
-    targetQuantity: Optional[int] = 0
+    totalQuantity: Optional[int] = 0
+    targetQuantity: int
     producedQuantity: Optional[int] = 0
     productionDate: date
 

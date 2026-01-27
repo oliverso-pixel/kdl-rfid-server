@@ -4,7 +4,7 @@ from typing import Optional, List
 from sqlalchemy import or_, and_, text
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import Basket, User
+from app.models import Basket, User, Batch
 from app.schemas import (
     BasketCreate, BasketUpdate, BasketResponse, BasketListResponse,
     BasketBatchUpdateItem, BasketBulkUpdateRequest, BasketCommonData,
@@ -205,13 +205,17 @@ def bulk_update_baskets(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    
+    logger.info(f"🚀 [Bulk Update] Type: {request.updateType}")
+    logger.info(f"📦 [Payload]: {request.model_dump_json()}")
+
     common = request.commonData or BasketCommonData()
     updated_count = 0
     default_update_by = common.updateBy or current_user.username
 
     default_status = None
     is_production = False
-    is_clear_mode = False
+    # is_clear_mode = False
 
     if request.updateType == "Production":
         default_status = "IN_PRODUCTION"
@@ -222,7 +226,7 @@ def bulk_update_baskets(
         default_status = "IN_STOCK"
     elif request.updateType == "Clear":
         default_status = "UNASSIGNED"
-        is_clear_mode = True
+        # is_clear_mode = True
 
     production_increments = {}
 
@@ -233,65 +237,125 @@ def bulk_update_baskets(
         basket.updateBy = item.updateBy or default_update_by
         basket.lastUpdated = datetime.now()
 
-        if is_production:
-            new_status = item.status or default_status
-            basket.status = new_status
+        # if is_production:
+        #     new_status = item.status or default_status
+        #     basket.status = new_status
             
-            target_batch = item.batch or common.batch
-            if target_batch:
-                basket.batch = target_batch
+        #     target_batch = item.batch or common.batch
+        #     if target_batch:
+        #         basket.batch = target_batch
             
-            qty = item.quantity if item.quantity is not None else common.quantity
-            if qty is not None:
-                basket.quantity = qty
-                if target_batch:
-                    production_increments[target_batch] = production_increments.get(target_batch, 0) + qty
+        #     qty = item.quantity if item.quantity is not None else common.quantity
+        #     if qty is not None:
+        #         basket.quantity = qty
+        #         if target_batch:
+        #             production_increments[target_batch] = production_increments.get(target_batch, 0) + qty
 
-        if is_clear_mode:
+        # if is_clear_mode:
+        #     basket.status = "UNASSIGNED"
+        #     basket.quantity = 0
+        #     basket.product = None
+        #     basket.batch = None
+        #     basket.productionDate = None
+        #     basket.warehouseId = None 
+        #     # if item.warehouseId or common.warehouseId:
+        #     #     basket.warehouseId = item.warehouseId or common.warehouseId
+        
+        # else:
+        #     # 4. 正常更新模式 (Receiving / Other)
+            
+        #     # Status: 個別指定 > 預設 (由 Type 決定)
+        #     # 如果個別沒指定且 Type 也沒定義，則保持原狀
+        #     new_status = item.status or default_status
+        #     if new_status:
+        #         basket.status = new_status
+
+        #     # Quantity
+        #     new_qty = item.quantity if item.quantity is not None else common.quantity
+        #     if new_qty is not None:
+        #         basket.quantity = new_qty
+
+        #     # Warehouse
+        #     new_wh = item.warehouseId or common.warehouseId
+        #     if new_wh:
+        #         basket.warehouseId = new_wh
+
+        #     # Product Info
+        #     new_prod = item.product or common.product
+        #     if new_prod: basket.product = new_prod
+            
+        #     new_batch = item.batch or common.batch
+        #     if new_batch: basket.batch = new_batch
+            
+        #     new_pdate = item.productionDate or common.productionDate
+        #     if new_pdate: basket.productionDate = new_pdate
+
+        # 1. 狀態 (Status)
+        # 優先級：個別指定 > 預設狀態 (由 Type 決定) > 共通資料 (若有)
+        final_status = item.status or default_status or common.status
+        if final_status:
+            basket.status = final_status
+
+        # 2. 倉庫 (Warehouse)
+        final_wh = item.warehouseId or common.warehouseId
+        if final_wh:
+            basket.warehouseId = final_wh
+
+        # 3. 產品與批次 (Product & Batch)
+        final_prod = item.product or common.product
+        if final_prod: 
+            basket.product = final_prod
+        
+        final_batch = item.batch or common.batch
+        if final_batch: 
+            basket.batch = final_batch
+
+        # 4. 數量 (Quantity)
+        # 使用 is not None 確保 0 也能被更新
+        final_qty = item.quantity if item.quantity is not None else common.quantity
+        if final_qty is not None:
+            basket.quantity = final_qty
+
+        # 5. Production 模式下的額外邏輯
+        if is_production:
+            # 在生產模式下，如果這裡有更新數量且有 Batch，需要累加到 Batches 表
+            if final_batch and final_qty is not None:
+                production_increments[final_batch] = production_increments.get(final_batch, 0) + final_qty
+            
+            # 記錄 Log 確認這一筆更新了什麼
+            # logger.info(f"   🔧 Processing {basket.rfid}: Status->{basket.status}, Qty->{basket.quantity}, Batch->{basket.batch}")
+            # logger.info(production_increments)
+        
+        # 6. Clear 模式
+        elif request.updateType == "Clear":
             basket.status = "UNASSIGNED"
             basket.quantity = 0
             basket.product = None
             basket.batch = None
             basket.productionDate = None
-            basket.warehouseId = None 
-            # if item.warehouseId or common.warehouseId:
-            #     basket.warehouseId = item.warehouseId or common.warehouseId
-        
-        else:
-            # 4. 正常更新模式 (Receiving / Other)
-            
-            # Status: 個別指定 > 預設 (由 Type 決定)
-            # 如果個別沒指定且 Type 也沒定義，則保持原狀
-            new_status = item.status or default_status
-            if new_status:
-                basket.status = new_status
-
-            # Quantity
-            new_qty = item.quantity if item.quantity is not None else common.quantity
-            if new_qty is not None:
-                basket.quantity = new_qty
-
-            # Warehouse
-            new_wh = item.warehouseId or common.warehouseId
-            if new_wh:
-                basket.warehouseId = new_wh
-
-            # Product Info
-            new_prod = item.product or common.product
-            if new_prod: basket.product = new_prod
-            
-            new_batch = item.batch or common.batch
-            if new_batch: basket.batch = new_batch
-            
-            new_pdate = item.productionDate or common.productionDate
-            if new_pdate: basket.productionDate = new_pdate
+            basket.warehouseId = None  
 
         publish_redis_update(basket)
         updated_count += 1
 
     if is_production and production_increments:
-        for batch_code, added_qty in production_increments.items():
-            batch_record = db.query(Batch).filter(Batch.batch_code == batch_code).first()
+        logger.info(f"📈 Updating Batches (Raw Keys): {production_increments}")
+        
+        for raw_batch_info, added_qty in production_increments.items():
+            final_batch_code = raw_batch_info
+            
+            try:
+                if isinstance(raw_batch_info, str) and "batch_code" in raw_batch_info:
+                    batch_data = json.loads(raw_batch_info)
+                    if isinstance(batch_data, dict):
+                        final_batch_code = batch_data.get("batch_code", raw_batch_info)
+            except Exception as e:
+                logger.warning(f"⚠️ Failed to parse batch JSON: {e}. Using raw string: {raw_batch_info}")
+
+            logger.info(f"   🔍 Querying Batch Code: {final_batch_code}")
+            
+            batch_record = db.query(Batch).filter(Batch.batch_code == final_batch_code).first()
+            
             if batch_record:
                 batch_record.producedQuantity += added_qty
                 batch_record.remainingQuantity += added_qty
@@ -301,6 +365,10 @@ def bulk_update_baskets(
                 
                 if batch_record.producedQuantity >= batch_record.targetQuantity:
                     batch_record.status = "COMPLETED"
+                
+                logger.info(f"   ✅ Updated Batch {final_batch_code}: Produced {batch_record.producedQuantity}/{batch_record.targetQuantity}")
+            else:
+                logger.error(f"❌ Batch code not found in DB: {final_batch_code}")
 
     db.commit()
     

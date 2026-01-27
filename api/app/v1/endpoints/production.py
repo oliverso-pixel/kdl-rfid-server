@@ -106,7 +106,7 @@ def update_batch(
         if Perms.SUPER_ADMIN not in perms and Perms.PRODUCTION_STOP not in perms:
             raise HTTPException(status_code=403, detail="Permission denied: Cannot stop production")
 
-    if batch_update.totalQuantity is not None:
+    if batch_update.targetQuantity is not None:
         # diff = batch_update.totalQuantity - batch.totalQuantity
         # batch.totalQuantity = batch_update.totalQuantity
         
@@ -158,6 +158,20 @@ def delete_batch(
 """
 App 端
 """
+# 透過 Batch Code 查詢批次詳情
+@router.get("/app/{batch_code}", response_model=BatchResponse)
+def get_batch_by_code(
+    batch_code: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission(Perms.PRODUCTION_READ))
+):
+    batch = db.query(Batch).filter(Batch.batch_code == batch_code).first()
+    
+    if not batch:
+        raise HTTPException(status_code=404, detail=f"Batch code '{batch_code}' not found")
+    
+    return batch
+
 @router.get("/daily-products", response_model=list[ProductAppResponse])
 def get_daily_production_products(
     target_date: date = None,
