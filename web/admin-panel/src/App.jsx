@@ -1,7 +1,8 @@
 // src/App.jsx
+import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { 
-    LogOut, LayoutDashboard, Users, ShoppingBag, Factory, 
+    Menu, X, LogOut, LayoutDashboard, Users, ShoppingBag, Factory, 
     Warehouse, Truck, Car, Smartphone, Package, Settings as SettingsIcon
 } from 'lucide-react';
 import Login from './pages/Login';
@@ -35,6 +36,7 @@ const NAV_ITEMS = [
 ];
 
 function Layout({ children }) {
+    const [isSidebarOpen, setSidebarOpen] = useState(false);
     const navigate = useNavigate();
     const location = useLocation();
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -46,17 +48,32 @@ function Layout({ children }) {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 flex">
-            {/* 側邊導覽列 */}
-            <aside className="w-64 bg-slate-900 text-slate-300 flex flex-col shadow-xl z-10">
-                <div className="p-6 border-b border-slate-800">
+        <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
+            {/* 移動端頂部列：僅在 md 以下顯示 */}
+            <header className="md:hidden bg-slate-900 text-white p-4 flex justify-between items-center sticky top-0 z-30 shadow-md">
+                <h2 className="text-xl font-bold tracking-wide">RFID Admin</h2>
+                <button 
+                    onClick={() => setSidebarOpen(!isSidebarOpen)}
+                    className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+                >
+                    {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
+                </button>
+            </header>
+
+            {/* 側邊導覽列：移動端為固定抽屜，桌面端為相對定位的固定寬度欄位 */}
+            <aside className={`
+                fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 text-slate-300 transform transition-transform duration-300 ease-in-out flex flex-col shadow-xl
+                md:relative md:translate-x-0 
+                ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+            `}>
+                <div className="p-6 border-b border-slate-800 hidden md:block">
                     <h2 className="text-xl font-bold text-white tracking-wide">RFID Admin</h2>
                     <div className="text-xs text-slate-500 mt-2">v1.0.0</div>
                 </div>
                 
                 <div className="p-4 border-b border-slate-800 bg-slate-800/50">
-                    <div className="text-sm font-medium text-white">{user.name || user.username}</div>
-                    <div className="text-xs text-slate-400 mt-1">{user.department || 'Unknown Dept'} | {user.role}</div>
+                    <div className="text-sm font-medium text-white truncate">{user.name || user.username}</div>
+                    <div className="text-xs text-slate-400 mt-1">{user.department} | {user.role}</div>
                 </div>
                 
                 <nav className="flex-1 overflow-y-auto py-4">
@@ -67,9 +84,10 @@ function Layout({ children }) {
                                 <li key={item.path}>
                                     <Link 
                                         to={item.path} 
+                                        onClick={() => setSidebarOpen(false)} // 點擊選單後自動關閉側邊欄
                                         className={`flex items-center px-4 py-3 rounded-lg transition-all duration-200 ${
                                             isActive 
-                                                ? 'bg-blue-600 text-white shadow-md shadow-blue-900/20' 
+                                                ? 'bg-blue-600 text-white shadow-md' 
                                                 : 'hover:bg-slate-800 hover:text-white'
                                         }`}
                                     >
@@ -92,9 +110,16 @@ function Layout({ children }) {
                 </div>
             </aside>
 
-            {/* 主內容區 */}
-            <main className="flex-1 overflow-auto relative">
-                {/* 頂部標題列 (可選，目前留空或放麵包屑) */}
+            {/* 移動端遮罩層：側邊欄打開時，點擊右側內容區域可關閉 */}
+            {isSidebarOpen && (
+                <div 
+                    className="fixed inset-0 bg-black/50 z-30 md:hidden transition-opacity" 
+                    onClick={() => setSidebarOpen(false)}
+                />
+            )}
+
+            {/* 主內容區：新增 min-w-0 防止 flex 佈局下表格撐開容器 */}
+            <main className="flex-1 overflow-auto relative min-w-0">
                 {children}
             </main>
         </div>

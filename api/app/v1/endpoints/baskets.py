@@ -42,6 +42,7 @@ def create_basket(
 
     new_basket = Basket(
         rfid=basket.rfid,
+        tag_code=basket.tag_code,
         type=basket.type,
         description=basket.description,
         status="UNASSIGNED",
@@ -95,6 +96,7 @@ def create_baskets_bulk(
         try:
             new_basket = Basket(
                 rfid=item.rfid,
+                tag_code=item.tag_code,
                 type=item.type,
                 description=item.description,
                 status="UNASSIGNED",

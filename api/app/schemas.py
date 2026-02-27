@@ -8,6 +8,7 @@ from datetime import date, datetime
 """
 class BasketBase(BaseModel):
     rfid: str
+    tag_code: Optional[str] = None
     type: Optional[int] = None
     description: Optional[str] = None
 
@@ -100,6 +101,7 @@ class BasketBulkUpdateRequest(BaseModel):
 
 class BasketBulkItem(BaseModel):
     rfid: str
+    tag_code: Optional[str] = None
     type: Optional[int] = None
     description: Optional[str] = None
 
@@ -140,7 +142,7 @@ class DeviceResponse(DeviceRegister):
         from_attributes = True
 
 """
-## User 回應模型
+## --- User ---
 """
 class UserResponse(BaseModel):
     uid: int

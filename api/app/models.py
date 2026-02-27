@@ -54,6 +54,7 @@ class Basket(Base):
 
     bid = Column(Integer, primary_key=True, index=True)
     rfid = Column(String, unique=True, index=True, nullable=False)
+    tag_code = Column(NVARCHAR(100), nullable=True)
     type = Column(Integer, nullable=True)
     
     # 這裡我們將 JSON 資料當作純文字存儲，App 端再自己解析
