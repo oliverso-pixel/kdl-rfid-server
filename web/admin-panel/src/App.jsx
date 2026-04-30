@@ -3,11 +3,12 @@ import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { 
     Menu, X, LogOut, LayoutDashboard, Users, ShoppingBag, Factory, 
-    Warehouse, Truck, Car, Smartphone, Package, Settings as SettingsIcon
+    Warehouse, Truck, Car, Smartphone, Package, Database, Settings as SettingsIcon
 } from 'lucide-react';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Baskets from './pages/Baskets';
+import BasketOperations from './pages/BasketOperations';
 import Devices from './pages/Devices';
 import UsersPage from './pages/Users';
 import Products from './pages/Products';
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
     { name: '儀表板', path: '/', icon: <LayoutDashboard size={20} /> },
     { name: '生產管理', path: '/production', icon: <Factory size={20} /> },
     { name: '籃子監控', path: '/inventory', icon: <Package size={20} /> },
+    { name: '籃子資料操作', path: '/basket-ops', icon: <Database size={20} /> },
     { name: '倉庫管理', path: '/warehouses', icon: <Warehouse size={20} /> },
     { name: '出貨管理', path: '/shipping', icon: <Truck size={20} /> },
     { name: '車隊管理', path: '/fleet', icon: <Car size={20} /> },
@@ -135,6 +137,7 @@ function App() {
         {/* 套用 Layout 的路由 */}
         <Route path="/" element={<PrivateRoute><Layout><Dashboard /></Layout></PrivateRoute>} />
         <Route path="/inventory" element={<PrivateRoute><Layout><Baskets /></Layout></PrivateRoute>} />
+        <Route path="/basket-ops" element={<PrivateRoute><Layout><BasketOperations /></Layout></PrivateRoute>} />
         <Route path="/production" element={<PrivateRoute><Layout><Production /></Layout></PrivateRoute>} />
         <Route path="/warehouses" element={<PrivateRoute><Layout><Warehouses /></Layout></PrivateRoute>} />
         <Route path="/shipping" element={<PrivateRoute><Layout><Shipping /></Layout></PrivateRoute>} />

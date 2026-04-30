@@ -224,8 +224,12 @@ def bulk_update_baskets(
         is_production = True
     elif request.updateType == "Receiving":
         default_status = "IN_STOCK"
+    elif request.updateType == "Inventory":
+        default_status = "IN_STOCK"
     elif request.updateType == "Transfer":
         default_status = "IN_STOCK"
+    elif request.updateType == "Shipping":
+        default_status = "SHIPPED"
     elif request.updateType == "Clear":
         default_status = "UNASSIGNED"
         # is_clear_mode = True
@@ -327,6 +331,9 @@ def bulk_update_baskets(
             # 記錄 Log 確認這一筆更新了什麼
             # logger.info(f"   🔧 Processing {basket.rfid}: Status->{basket.status}, Qty->{basket.quantity}, Batch->{basket.batch}")
             # logger.info(production_increments)
+
+        elif request.updateType == "Shipping":
+            basket.warehouseId = None
         
         # 6. Clear 模式
         elif request.updateType == "Clear":
