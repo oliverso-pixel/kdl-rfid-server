@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { 
     Menu, X, LogOut, LayoutDashboard, Users, ShoppingBag, Factory, 
-    Warehouse, Truck, Car, Smartphone, Package, Database, Settings as SettingsIcon
+    Warehouse, Truck, Car, Smartphone, Package, Database, ClipboardList, Settings as SettingsIcon
 } from 'lucide-react';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -14,6 +14,7 @@ import UsersPage from './pages/Users';
 import Products from './pages/Products';
 import Production from './pages/Production';
 import Warehouses from './pages/Warehouses';
+import InventoryHistory from './pages/InventoryHistory';
 import Shipping from './pages/Shipping';
 import Fleet from './pages/Fleet';
 import SettingsPage from './pages/Settings';
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
     { name: '籃子監控', path: '/inventory', icon: <Package size={20} /> },
     { name: '籃子資料操作', path: '/basket-ops', icon: <Database size={20} /> },
     { name: '倉庫管理', path: '/warehouses', icon: <Warehouse size={20} /> },
+    { name: '盤點報告', path: '/inventory-history', icon: <ClipboardList size={20} /> },
     { name: '出貨管理', path: '/shipping', icon: <Truck size={20} /> },
     { name: '車隊管理', path: '/fleet', icon: <Car size={20} /> },
     { name: '產品管理', path: '/products', icon: <ShoppingBag size={20} /> },
@@ -140,6 +142,7 @@ function App() {
         <Route path="/basket-ops" element={<PrivateRoute><Layout><BasketOperations /></Layout></PrivateRoute>} />
         <Route path="/production" element={<PrivateRoute><Layout><Production /></Layout></PrivateRoute>} />
         <Route path="/warehouses" element={<PrivateRoute><Layout><Warehouses /></Layout></PrivateRoute>} />
+        <Route path="/inventory-history" element={<PrivateRoute><Layout><InventoryHistory /></Layout></PrivateRoute>} />
         <Route path="/shipping" element={<PrivateRoute><Layout><Shipping /></Layout></PrivateRoute>} />
         <Route path="/fleet" element={<PrivateRoute><Layout><Fleet /></Layout></PrivateRoute>} />
         <Route path="/products" element={<PrivateRoute><Layout><Products /></Layout></PrivateRoute>} />

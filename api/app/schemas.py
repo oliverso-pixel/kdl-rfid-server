@@ -322,3 +322,54 @@ class WarehouseResponse(WarehouseBase):
 
     class Config:
         from_attributes = True
+
+"""
+# --- 盤點 ---
+"""
+# 接收前端的盤點請求
+class InventoryRecordRequest(BaseModel):
+    warehouse_id: str
+    scanned_rfids: List[str]
+    start_time: datetime
+    end_time: datetime
+
+# 用於報告的籃子詳細資訊
+class InventoryBasketDetail(BaseModel):
+    rfid: str
+    tag_code: Optional[str] = None
+    product: Optional[str] = None
+    quantity: Optional[int] = 0
+
+# 回傳的盤點報告 (In/Out Report)
+class InventoryReport(BaseModel):
+    session_id: int
+    warehouse_id: str
+    user_id: str
+    total_scanned: int
+    total_expected: int
+    match_count: int
+    missing_count: int  # 盤虧 (Out)
+    extra_count: int    # 盤盈 (In)
+    matched_baskets: List[InventoryBasketDetail]
+    missing_baskets: List[InventoryBasketDetail]
+    extra_baskets: List[InventoryBasketDetail]
+
+class InventorySessionSchema(BaseModel):
+    session_id: int # 
+    warehouse_id: str # 
+    user_id: str # 
+    start_time: datetime # 
+    end_time: datetime # 
+    total_scanned: Optional[int] # 
+    total_expected: Optional[int] # 
+    missing_count: Optional[int] # 
+    extra_count: Optional[int] # 
+
+    class Config:
+        from_attributes = True
+
+class InventoryReportSchema(BaseModel):
+    session_id: int
+    matched: List[InventoryBasketDetail]
+    missing: List[InventoryBasketDetail]
+    extra: List[InventoryBasketDetail]

@@ -112,3 +112,20 @@ class Warehouse(Base):
     name = Column(NVARCHAR(100))
     address = Column(NVARCHAR(255), nullable=True)
     isActive = Column(Boolean, default=True)
+
+class InventorySession(Base):
+    __tablename__ = "InventorySessions"
+
+    session_id = Column(Integer, primary_key=True, index=True) #
+    warehouse_id = Column(String(50), nullable=False) #
+    user_id = Column(String(50), nullable=False) #
+    start_time = Column(DateTime, nullable=False) #
+    end_time = Column(DateTime, nullable=False) #
+    type = Column(String(20)) #
+    status = Column(String(20)) #
+    total_scanned = Column(Integer) #
+    total_expected = Column(Integer) #
+    match_count = Column(Integer) #
+    missing_count = Column(Integer) #
+    extra_count = Column(Integer) #
+    created_at = Column(DateTime, default=func.now(), onupdate=func.now())
