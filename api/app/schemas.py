@@ -338,6 +338,7 @@ class InventoryBasketDetail(BaseModel):
     rfid: str
     tag_code: Optional[str] = None
     product: Optional[str] = None
+    batch: Optional[str] = None
     quantity: Optional[int] = 0
 
 # 回傳的盤點報告 (In/Out Report)
@@ -358,6 +359,7 @@ class InventorySessionSchema(BaseModel):
     session_id: int # 
     warehouse_id: str # 
     user_id: str # 
+    username: Optional[str] = None
     start_time: datetime # 
     end_time: datetime # 
     total_scanned: Optional[int] # 

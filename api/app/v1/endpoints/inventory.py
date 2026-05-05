@@ -1,12 +1,13 @@
 # app/v1/endpoints/inventory.py
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from datetime import datetime
-from typing import List
+from sqlalchemy import cast, String, Date, func
+from datetime import datetime, date as date_type
+from typing import List, Optional
 
 from ... import models, schemas
 from ...database import get_db
-from ...core.security import get_current_user # 假設您有實作取得當前使用者的依賴
+from ...core.security import get_current_user
 
 router = APIRouter()
 
@@ -71,6 +72,7 @@ def record_inventory(
             rfid=b.rfid,
             tag_code=b.tag_code,
             product=b.product,
+            batch=b.batch,
             quantity=b.quantity
         )
 
@@ -88,12 +90,43 @@ def record_inventory(
         extra_baskets=[format_basket(b) for b in extra_baskets]
     )
 
-@router.get("/sessions", response_model=List[schemas.InventorySessionSchema])
-def get_inventory_sessions(db: Session = Depends(get_db)):
-    """回傳 InventorySessions 表的歷史列表 """
-    return db.query(models.InventorySession).order_by(models.InventorySession.start_time.desc()).all()
+# @router.get("/sessions", response_model=List[schemas.InventorySessionSchema])
+# def get_inventory_sessions(db: Session = Depends(get_db)):
+#     """回傳 InventorySessions 表的歷史列表 """
+#     return db.query(models.InventorySession).order_by(models.InventorySession.start_time.desc()).all()
 
-# 2. 獲取特定盤點的詳細對比報告
+@router.get("/sessions", response_model=List[schemas.InventorySessionSchema])
+def get_inventory_sessions(
+    search_date: Optional[date_type] = Query(None, description="依日期搜尋盤點紀錄"),
+    db: Session = Depends(get_db)
+):
+    """回傳 InventorySessions 表的歷史列表，並加入 User 關聯與日期搜尋"""
+    
+    # 進行 Left Outer Join，將 user_id (字串) 與 User.uid (整數) 關聯
+    query = db.query(
+        models.InventorySession,
+        models.User.username
+    ).outerjoin(
+        models.User,
+        models.InventorySession.user_id == cast(models.User.uid, String)
+    )
+
+    # 如果前端有傳入日期，則進行篩選
+    if search_date:
+        query = query.filter(func.cast(models.InventorySession.start_time, Date) == search_date)
+
+    results = query.order_by(models.InventorySession.start_time.desc()).all()
+
+    # 組合回傳結果
+    sessions = []
+    for session, username in results:
+        session_dict = session.__dict__.copy()
+        session_dict["username"] = username if username else "未知人員"
+        sessions.append(session_dict)
+
+    return sessions
+
+# 獲取特定盤點的詳細對比報告
 @router.get("/sessions/{session_id}/report", response_model=schemas.InventoryReportSchema)
 def get_session_report(session_id: int, db: Session = Depends(get_db)):
     """
