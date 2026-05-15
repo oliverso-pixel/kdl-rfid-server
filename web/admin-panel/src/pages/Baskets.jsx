@@ -171,7 +171,7 @@ export default function Baskets() {
                         >
                             <option value="ALL">全部狀態</option>
                             <option value="IN_PRODUCTION">生產中</option>
-                            <option value="WAREHOUSE">在庫</option>
+                            <option value="IN_STOCK">在庫</option>
                             <option value="SHIPPED">已出貨</option>
                             <option value="UNASSIGNED">未配置</option>
                         </select>

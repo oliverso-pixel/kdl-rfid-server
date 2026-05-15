@@ -60,11 +60,36 @@ def record_inventory(
     db.commit()
     db.refresh(new_session)
 
-    # 5. (可選) 自動更新籃子狀態
-    # 例如：將 missing 的籃子狀態標記為 'MISSING'，將 extra 的籃子 warehouseId 更新為當前倉庫
-    # db.query(models.Basket).filter(models.Basket.rfid.in_(missing_rfids)).update({"status": "MISSING"}, synchronize_session=False)
-    # db.query(models.Basket).filter(models.Basket.rfid.in_(extra_rfids)).update({"warehouseId": payload.warehouse_id, "status": "WAREHOUSE"}, synchronize_session=False)
-    # db.commit()
+    # ================= 新增：5. 將盤點的詳細清單寫入資料庫 =================
+    items_to_insert = []
+
+    # 5a. 寫入 MATCHED (準確)
+    for rfid in matched_rfids:
+        b = expected_dict[rfid]
+        items_to_insert.append(models.InventorySessionItem(
+            session_id=new_session.session_id, rfid=b.rfid, tag_code=b.tag_code, 
+            product=b.product, batch=b.batch, quantity=b.quantity, category="MATCHED"
+        ))
+
+    # 5b. 寫入 MISSING (盤虧)
+    for rfid in missing_rfids:
+        b = expected_dict[rfid]
+        items_to_insert.append(models.InventorySessionItem(
+            session_id=new_session.session_id, rfid=b.rfid, tag_code=b.tag_code, 
+            product=b.product, batch=b.batch, quantity=b.quantity, category="MISSING"
+        ))
+
+    # 5c. 寫入 EXTRA (盤盈)
+    for b in extra_baskets:
+        items_to_insert.append(models.InventorySessionItem(
+            session_id=new_session.session_id, rfid=b.rfid, tag_code=b.tag_code, 
+            product=b.product, batch=b.batch, quantity=b.quantity, category="EXTRA"
+        ))
+
+    if items_to_insert:
+        db.add_all(items_to_insert)
+        db.commit()
+    # ====================================================================
 
     # 6. 整理並回傳詳細報告
     def format_basket(b):
@@ -131,19 +156,39 @@ def get_inventory_sessions(
 def get_session_report(session_id: int, db: Session = Depends(get_db)):
     """
     回傳該 session 的詳細比對結果。
-    邏輯：透過 BasketsHistory 查找該 session 結束時間點的快照進行比對。 
+    從 InventorySessionItems 資料表中提取盤點當下的快照。
     """
     session_record = db.query(models.InventorySession).filter(models.InventorySession.session_id == session_id).first()
     if not session_record:
         raise HTTPException(status_code=404, detail="Session not found")
 
-    # 這裡應實作比對邏輯：
-    # A. 取得該倉庫在 session.end_time 時系統紀錄的所有籃子 (從 BasketsHistory) 
-    # B. 這裡暫以模擬數據演示結構，實際需配合您的掃描紀錄表或當次上傳快照
-    
-    return {
+    # 撈取該次盤點所有的明細項目
+    items = db.query(models.InventorySessionItem).filter(
+        models.InventorySessionItem.session_id == session_id
+    ).all()
+
+    report = {
         "session_id": session_id,
-        "matched": [], # 具體籃子 Detail 物件清單
-        "missing": [], # 盤虧清單
-        "extra": []    # 盤盈清單
+        "matched": [],
+        "missing": [],
+        "extra": []
     }
+
+    # 根據 category 進行分類打包
+    for item in items:
+        detail = {
+            "rfid": item.rfid,
+            "tag_code": item.tag_code,
+            "product": item.product,
+            "batch": item.batch,
+            "quantity": item.quantity or 0
+        }
+        
+        if item.category == "MATCHED":
+            report["matched"].append(detail)
+        elif item.category == "MISSING":
+            report["missing"].append(detail)
+        elif item.category == "EXTRA":
+            report["extra"].append(detail)
+
+    return report

@@ -129,3 +129,17 @@ class InventorySession(Base):
     missing_count = Column(Integer) #
     extra_count = Column(Integer) #
     created_at = Column(DateTime, default=func.now(), onupdate=func.now())
+
+class InventorySessionItem(Base):
+    __tablename__ = "InventorySessionItems"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(Integer, index=True) # 關聯到 InventorySessions 的 session_id
+    rfid = Column(String(50), nullable=False)
+    tag_code = Column(NVARCHAR(100), nullable=True)
+    product = Column(NVARCHAR(4000), nullable=True)
+    batch = Column(NVARCHAR(4000), nullable=True)
+    quantity = Column(Integer, default=0)
+    
+    # 記錄這個籃子在這次盤點中是屬於什麼狀態 (MATCHED, MISSING, EXTRA)
+    category = Column(String(20), nullable=False)
